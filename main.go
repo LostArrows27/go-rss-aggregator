@@ -1,30 +1,32 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
+	"github.com/LostArrows27/go-rss-aggregator/env"
+	"github.com/LostArrows27/go-rss-aggregator/handler"
+	"github.com/LostArrows27/go-rss-aggregator/internal/database"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
-	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func main() {
-	// 1. configure port
-	fmt.Println("Hello, World!")
+	// 1. connect to database
 
-	err := godotenv.Load(".env")
+	env.LoadEnv(".env")
+
+	portString := env.GetEnv("PORT")
+
+	dbURL := env.GetEnv("DB_URL")
+
+	conn, err := sql.Open("postgres", dbURL)
 
 	if err != nil {
-		log.Fatal("Error in loading .env")
-	}
-
-	portString := os.Getenv("PORT")
-
-	if portString == "" {
-		log.Fatal("Not found port")
+		log.Fatal("Can't connect to database", err)
 	}
 
 	// 2. config server
@@ -43,9 +45,15 @@ func main() {
 
 	// 3. config router
 
+	apiConfig := handler.ApiConfig{
+		DB: database.New(conn),
+	}
+
 	v1Router := chi.NewRouter()
-	v1Router.HandleFunc("/", handlerErr)
-	router.HandleFunc("/", handlerReadiness)
+	v1Router.HandleFunc("/", handler.HandlerReadiness)
+	v1Router.HandleFunc("/users", apiConfig.HandlerCreateUser)
+
+	router.HandleFunc("/", handler.HandlerReadiness)
 	router.Mount("/v1", v1Router)
 
 	// 4. set up server to run
@@ -60,7 +68,7 @@ func main() {
 	serverError := srv.ListenAndServe()
 
 	if serverError != nil {
-		log.Fatal(err)
+		log.Fatal(serverError)
 	}
 
 }
