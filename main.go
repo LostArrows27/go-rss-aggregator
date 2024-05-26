@@ -23,13 +23,13 @@ func main() {
 
 	dbURL := env.GetEnv("DB_URL")
 
-	conn, err := sql.Open("postgres", dbURL)
+	connection, err := sql.Open("postgres", dbURL)
 
 	if err != nil {
 		log.Fatal("Can't connect to database", err)
 	}
 
-	// 2. config server
+	// 2. config server HTTPS
 	router := chi.NewRouter()
 
 	router.Use(cors.Handler(cors.Options{
@@ -43,20 +43,33 @@ func main() {
 		MaxAge:           300,
 	}))
 
-	// 3. config router
+	// 3. config database
 
 	apiConfig := handler.ApiConfig{
-		DB: database.New(conn),
+		DB: database.New(connection),
 	}
 
-	v1Router := chi.NewRouter()
-	v1Router.HandleFunc("/", handler.HandlerReadiness)
-	v1Router.HandleFunc("/users", apiConfig.HandlerCreateUser)
+	// 4. config router handler
 
-	router.HandleFunc("/", handler.HandlerReadiness)
+	v1Router := chi.NewRouter()
+
+	v1Router.Get("/", handler.HandlerReadiness)
+
+	v1Router.Route("/users", func(r chi.Router) {
+		r.Middlewares()
+		r.Get("/", apiConfig.MiddlewareAuth(apiConfig.HandlerGetUserByAPIKey))
+		r.Post("/create", apiConfig.HandlerCreateUser)
+	})
+
+	v1Router.Route("/feeds", func(r chi.Router) {
+		r.Get("/all", apiConfig.GetAllFeed)
+		r.Post("/te", apiConfig.MiddlewareAuth(apiConfig.HandlerCreateFeed))
+	})
+
+	router.Get("/", handler.HandlerReadiness)
 	router.Mount("/v1", v1Router)
 
-	// 4. set up server to run
+	// 5. set up server to run
 	srv := &http.Server{
 		Handler: router,
 		Addr:    ":" + portString,
@@ -64,7 +77,7 @@ func main() {
 
 	fmt.Printf("Server starting on port %v", portString)
 
-	// server run non-stop from here
+	// NOTE: server run non-stop from here
 	serverError := srv.ListenAndServe()
 
 	if serverError != nil {

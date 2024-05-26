@@ -10,15 +10,24 @@ import (
 	"github.com/google/uuid"
 )
 
-type ApiConfig struct {
-	DB *database.Queries
+func (apiCfg *ApiConfig) GetAllFeed(w http.ResponseWriter, r *http.Request) {
+	feeds, err := apiCfg.DB.GetFeeds(r.Context())
+
+	if err != nil {
+		RespondWithError(w, 400, fmt.Sprintf("Couldn't get feeds: %v", err))
+		return
+	}
+
+	RespondWithJSON(w, 200, convertFeedArrayJSON(feeds))
+
 }
 
-func (apiCfg *ApiConfig) HandlerCreateUser(w http.ResponseWriter, r *http.Request) {
+func (apiCfg *ApiConfig) HandlerCreateFeed(w http.ResponseWriter, r *http.Request, user database.User) {
 
 	// 1. get body from request
 	type parameters struct {
 		Name string `json:"name"`
+		URL  string `json:"url"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -32,12 +41,14 @@ func (apiCfg *ApiConfig) HandlerCreateUser(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// 2. create user
-	user, err := apiCfg.DB.CreateUser(r.Context(), database.CreateUserParams{
+	// 2. create feed
+	feed, err := apiCfg.DB.CreateFeed(r.Context(), database.CreateFeedParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 		Name:      params.Name,
+		Url:       params.URL,
+		UserID:    user.ID,
 	})
 
 	// 3. handle response
@@ -46,10 +57,5 @@ func (apiCfg *ApiConfig) HandlerCreateUser(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	RespondWithJSON(w, 200, convertUserJSON(user))
-}
-
-func (apiCfg *ApiConfig) HandlerGetUserByAPIKey(w http.ResponseWriter, r *http.Request, user database.User) {
-	RespondWithJSON(w, 201, convertUserJSON(user))
-
+	RespondWithJSON(w, 200, convertFeedJSON(feed))
 }
