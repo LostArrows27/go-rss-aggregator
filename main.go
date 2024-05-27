@@ -56,15 +56,22 @@ func main() {
 	v1Router.Get("/", handler.HandlerReadiness)
 
 	v1Router.Route("/users", func(r chi.Router) {
-		r.Middlewares()
 		r.Get("/", apiConfig.MiddlewareAuth(apiConfig.HandlerGetUserByAPIKey))
 		r.Post("/create", apiConfig.HandlerCreateUser)
 	})
 
 	v1Router.Route("/feeds", func(r chi.Router) {
 		r.Get("/all", apiConfig.GetAllFeed)
-		r.Post("/te", apiConfig.MiddlewareAuth(apiConfig.HandlerCreateFeed))
+		r.Post("/create", apiConfig.MiddlewareAuth(apiConfig.HandlerCreateFeed))
 	})
+
+	v1Router.Route("/feed_follow", func(r chi.Router) {
+		r.Get("/all", apiConfig.MiddlewareAuth(apiConfig.GetAllFeedFollows))
+		r.Post("/create", apiConfig.MiddlewareAuth(apiConfig.HandlerCreateFeedFollow))
+		r.Delete("/delete/{feed_follow_id}", apiConfig.MiddlewareAuth(apiConfig.DeleteFeedFollowByID))
+	})
+
+	v1Router.Post("/feed_follow/create", apiConfig.MiddlewareAuth(apiConfig.HandlerCreateFeedFollow))
 
 	router.Get("/", handler.HandlerReadiness)
 	router.Mount("/v1", v1Router)

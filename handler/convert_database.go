@@ -28,6 +28,14 @@ type FeedArrayResponse struct {
 	Feeds []Feed `json:"feeds"`
 }
 
+type FeedFollow struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	UserID    uuid.UUID `json:"user_id"`
+	FeedID    uuid.UUID `json:"feed_id"`
+}
+
 func convertUserJSON(dbUser database.User) User {
 	return User{
 		ID:        dbUser.ID,
@@ -59,4 +67,24 @@ func convertFeedArrayJSON(dbFeeds []database.Feed) FeedArrayResponse {
 	return FeedArrayResponse{
 		Feeds: feeds,
 	}
+}
+
+func convertFeedFollowJSON(dbFeedFollow database.FeedFollow) FeedFollow {
+	return FeedFollow{
+		ID:        dbFeedFollow.ID,
+		CreatedAt: dbFeedFollow.CreatedAt,
+		UpdatedAt: dbFeedFollow.UpdatedAt,
+		UserID:    dbFeedFollow.UserID,
+		FeedID:    dbFeedFollow.FeedID,
+	}
+}
+
+func convertFeedFollowArrayJSON(dbFeedFollows []database.FeedFollow) []FeedFollow {
+	feedFollows := make([]FeedFollow, len(dbFeedFollows))
+
+	for i, feedFollow := range dbFeedFollows {
+		feedFollows[i] = convertFeedFollowJSON(feedFollow)
+	}
+
+	return feedFollows
 }
