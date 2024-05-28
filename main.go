@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/LostArrows27/go-rss-aggregator/env"
 	"github.com/LostArrows27/go-rss-aggregator/handler"
 	"github.com/LostArrows27/go-rss-aggregator/internal/database"
+	"github.com/LostArrows27/go-rss-aggregator/scraper"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
 	_ "github.com/lib/pq"
@@ -16,7 +18,6 @@ import (
 
 func main() {
 	// 1. connect to database
-
 	env.LoadEnv(".env")
 
 	portString := env.GetEnv("PORT")
@@ -49,6 +50,14 @@ func main() {
 		DB: database.New(connection),
 	}
 
+	// 4. config feed background job
+
+	go scraper.StartScrapping(
+		apiConfig.DB,
+		10,
+		time.Minute,
+	)
+
 	// 4. config router handler
 
 	v1Router := chi.NewRouter()
@@ -72,6 +81,8 @@ func main() {
 	})
 
 	v1Router.Post("/feed_follow/create", apiConfig.MiddlewareAuth(apiConfig.HandlerCreateFeedFollow))
+
+	v1Router.Get("/posts", apiConfig.MiddlewareAuth(apiConfig.HanlderGetPostForUser))
 
 	router.Get("/", handler.HandlerReadiness)
 	router.Mount("/v1", v1Router)
